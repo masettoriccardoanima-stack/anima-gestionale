@@ -2861,27 +2861,24 @@ async function restoreFromFile(file){
   // 2) Supporta due formati:
   //    A) Vecchio: { version, ts, data: { ... } }
   //    B) Nuovo:  { __meta, appSettings, commesseRows, ... } senza "data"
-  const dataBlock = (payload.data && typeof payload.data === 'object')
-    ? payload.data
-    : payload;
+  const dataBlock =
+    (payload.data && typeof payload.data === 'object')
+      ? payload.data
+      : payload;
 
-  // 3) Chiavi che ci interessano davvero
-  const KEYS = [
-    'appSettings',
-    'clientiRows','fornitoriRows',
-    'magArticoli','magMovimenti',
-    'commesseRows','oreRows',
-    'ddtRows','fattureRows',
-    'ordiniFornitoriRows',
-    'counters'
-  ];
-
+  // 3) Scrivi TUTTE le chiavi del backup nel localStorage
   let touched = 0;
-  for (const k of KEYS) {
-    if (typeof dataBlock[k] === 'undefined') continue;
+  for (const k of Object.keys(dataBlock)) {
+    // se vuoi, puoi saltare chiavi di metadati:
+    // if (k.startsWith('__')) continue;
+
+    const v = dataBlock[k];
+    if (typeof v === 'undefined') continue;
     try {
-      localStorage.setItem(k, JSON.stringify(dataBlock[k]));
+      localStorage.setItem(k, JSON.stringify(v));
       touched++;
+      // opzionale: log per debug
+      // console.log('[restore] set', k, v);
     } catch {}
   }
 
@@ -2893,6 +2890,7 @@ async function restoreFromFile(file){
   alert('Ripristino completato ✅\nRicarico la pagina per applicare i dati.');
   location.reload();
 }
+
 // Salvataggio robusto su localStorage con messaggio chiaro se va in errore (quota piena, ecc.)
 window.safeSetJSON = function(key, value){
   try{
