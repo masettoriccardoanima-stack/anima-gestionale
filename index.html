@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ANIMA Gestionale</title>
+
+  <meta name="theme-color" content="#0b1220">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Timbratura">
+
+  <link rel="icon" href="./favicon.ico">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <link rel="manifest" href="./manifest.webmanifest" />
+
+  <link rel="stylesheet" href="./anima.css" />
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- Vendor: UNA SOLA volta -->
+  <script src="./vendor/react.production.min.js"></script>
+  <script src="./vendor/react-dom.production.min.js"></script>
+
+  <!-- QR libs (se servono) -->
+  <script src="./vendor/html5-qrcode.min.js"></script>
+  <script src="./vendor/jsQR.js"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Shim file://  PRIMA dell'app -->
+  <script src="./shim-desktop.js"></script>
+
+  <!-- La tua app: UNA SOLA volta -->
+  <script src="./app.js"></script>
+
+  <script>
+    // Se file:// e senza hash, porta al login (evita “schermo bianco”)
+    (function(){
+      if (location.protocol === 'file:' && !location.hash) {
+        location.hash = '#/login';
+      }
+    })();
+  </script>
+
+  <script>
+  // Registra SW solo se non siamo su file://
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('./sw.js').catch(console.warn);
+    });
+  }
+</script>
+
+</body>
+</html>
+

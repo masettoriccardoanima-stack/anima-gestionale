@@ -1,0 +1,8 @@
+
+{
+  "supabaseUrl": "https://fjlextoigwwhikovkhge.supabase.co",
+  "supabaseKey": "LA_TUA_ANON_PUBLIC_KEY",
+  "supabaseTable": "anima_sync",
+  "cloudEnabled": true
+}
+

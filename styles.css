@@ -1,0 +1,89 @@
+/* ========== STILI BASE ========== */
+:root{
+  --bg:#f6f7fb; --text:#0f172a; --muted:#64748b; --border:#cbd5e1;
+  --primary:#2563eb; --primary-light:#3b82f6; --danger:#dc2626; --warn:#eab308;
+}
+html,body,#root{height:100%}
+body{margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif; background:var(--bg); color:var(--text)}
+button,input,select,textarea{font:inherit}
+
+/* Layout principale */
+.layout{display:grid; grid-template-columns:240px 1fr; height:100%}
+.sidebar{background:#fff; border-right:1px solid var(--border); padding:16px; overflow-y:auto}
+.menu-item{padding:8px 12px; border-radius:6px; cursor:pointer;}
+.menu-item:hover{background:#f1f5f9}
+.menu-item.active{background:var(--primary-light); color:#fff}
+.mobilebar{display:none}
+.mobilemenu{display:none}
+.content{display:flex; flex-direction:column}
+.topbar{display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid var(--border); background:#fff}
+.page{padding:16px; overflow-y:auto}
+
+/* Cards e tabelle */
+.card{background:#fff; border:1px solid var(--border); border-radius:12px; padding:16px}
+.table{width:100%; border-collapse:collapse; font-size:14px}
+.table th,.table td{border:1px solid var(--border); padding:4px 6px; text-align:left}
+
+/* Progress bar */
+.progress{background:#e2e8f0; border-radius:8px; overflow:hidden; height:8px}
+.progress>div{background:var(--primary); height:8px}
+
+/* Badge */
+.badge-red{color:#fff; background:var(--danger); padding:2px 6px; border-radius:6px; font-size:12px}
+.badge-yellow{color:#fff; background:var(--warn); padding:2px 6px; border-radius:6px; font-size:12px}
+
+/* Form */
+.form{display:grid; gap:8px; grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+label{font-size:13px; font-weight:500; margin-bottom:2px; display:block}
+input,select,textarea{width:100%; border:1px solid var(--border); border-radius:6px; padding:4px 6px; background:#fff}
+textarea{min-height:60px; resize:vertical}
+
+.actions{display:flex; gap:8px; margin-top:8px}
+.btn{padding:6px 12px; border:none; border-radius:6px; background:var(--primary); color:#fff; cursor:pointer}
+.btn:hover{background:#1d4ed8}
+.btn-outline{background:#fff; color:var(--text); border:1px solid var(--border)}
+
+/* Griglie */
+.grid{display:grid}
+.grid-2{grid-template-columns:1fr 1fr; gap:16px}
+.row{display:flex; gap:8px; align-items:center}
+
+/* Avvisi rapidi */
+ul{margin:0; padding:0; list-style:none}
+ul li{background:#f8fafc}
+
+/* Responsive */
+@media(max-width:768px){
+  .layout{grid-template-columns:1fr}
+  .sidebar{display:none}
+  .mobilebar{display:flex; justify-content:space-between; align-items:center; padding:12px 16px; background:#fff; border-bottom:1px solid var(--border)}
+  .mobilemenu{display:grid; gap:8px; padding:16px; background:#fff; border-bottom:1px solid var(--border)}
+}
+/* --- FIX layout che si restringe --- */
+.content { min-width: 0; }
+.page { min-width: 0; overflow-y: auto; }
+
+/* le tabelle non spingono fuori il layout */
+.table { table-layout: fixed; }
+.table th, .table td { overflow-wrap: anywhere; word-wrap: break-word; }
+
+/* allunga la pagina a piena altezza */
+.layout { min-height: 100vh; }
+/* --- HOTFIX anti-restringimento --- */
+html, body, #root, .layout, .content, .page { width: 100%; }
+#root, .content, .page { min-width: 0; }   /* evita che i figli stringano il genitore */
+.layout { grid-template-columns: minmax(220px, 240px) 1fr; min-height: 100vh; }
+.sidebar { min-width: 220px; }
+.content { display: flex; flex-direction: column; }
+
+/* tabelle e immagini non “spingono” fuori */
+.table { width: 100%; table-layout: fixed; }
+.table th, .table td { overflow-wrap: anywhere; word-wrap: break-word; }
+
+/* griglia 2-col responsiva di default */
+.grid-2 { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+
+/* sicurezza generale */
+img { max-width: 100%; height: auto; }
+.badge-green { background:#e8f7ee; color:#0d8a3a; padding:2px 8px; border-radius:999px; font-weight:600; }
+.badge-yellow { background:#fff7e6; color:#a76a00; padding:2px 8px; border-radius:999px; font-weight:600; }
