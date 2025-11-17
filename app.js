@@ -7908,6 +7908,22 @@ function ImpostazioniView() {
     const c = counters0[series];
     return (c && c.year === Y) ? Number(c.num) || 0 : 0;
   };
+    const initNum = (seriesKey) => {
+    const base = last(seriesKey) || 0;
+
+    // prova a leggere eventuali numerazioni salvate in appSettings
+    const numer = app0.numerazioni || app0.numeratori || {};
+    const perSerie = numer[seriesKey] || {};
+    const byYear = perSerie[String(Y)] && perSerie[String(Y)].ultimo;
+    const flat   = perSerie.ultimo;
+    const legacy = app0[seriesKey + '_last'] ?? app0['ultimo' + seriesKey];
+
+    const saved = Number(byYear ?? flat ?? legacy ?? 0) || 0;
+    const val = Math.max(base, saved);
+
+    return val || '';
+  };
+
 
   const operatorsTextInitial =
     Array.isArray(app0.operators) ? app0.operators.join('\n')
@@ -7937,11 +7953,12 @@ function ImpostazioniView() {
     iban             : app0.iban || '',
     bic              : app0.bic || '',
 
-    // Progressivi (peek ultimo usato nell'anno)
-    numC   : last('C')   || '',
-    numDDT : last('DDT') || '',
-    numFA  : last('FA')  || '',
-    numOF  : last('OF')  || '',
+    // Progressivi (peek ultimo usato nell'anno, da counters + appSettings.numerazioni)
+    numC   : initNum('C'),
+    numDDT : initNum('DDT'),
+    numFA  : initNum('FA'),
+    numOF  : initNum('OF'),
+
 
     // Default documenti
     defaultIva       : Number.isFinite(+app0.defaultIva) ? +app0.defaultIva : 22,
@@ -8018,6 +8035,23 @@ function ImpostazioniView() {
     const fasiStd = (form.fasiStandard||[])
       .map(x => (typeof x === 'string' ? x : (x?.label || x?.code || '')).trim())
       .filter(Boolean);
+          // --- Numerazioni: salva anche in appSettings.numerazioni ---
+    const numerazioni = Object.assign({}, app0.numerazioni || {});
+    const yearKey = String(new Date().getFullYear());
+
+    const setNum = (seriesKey, value) => {
+      const n = Number(value);
+      if (!Number.isFinite(n) || !n) return;   // se vuoto o non numerico, salta
+      const serie = numerazioni[seriesKey] || {};
+      const curYearData = serie[yearKey] || {};
+      serie[yearKey] = { ...curYearData, ultimo: n };
+      numerazioni[seriesKey] = serie;
+    };
+
+    setNum('C',   form.numC);
+    setNum('DDT', form.numDDT);
+    setNum('FA',  form.numFA);
+    setNum('OF',  form.numOF);
 
     // Patch con i soli campi da aggiornare
     updateAppSettings({
@@ -8052,14 +8086,17 @@ function ImpostazioniView() {
       operators       : operatorsArr,
       fasiStandard    : fasiStd,
 
-      // Cloud
+            // Cloud
       cloudEnabled    : !!form.cloudEnabled,
       supabaseUrl     : String(form.supabaseUrl||'').trim(),
       supabaseKey     : String(form.supabaseKey||'').trim(),
       supabaseTable   : (String(form.supabaseTable||'').trim() || 'anima_sync'),
 
       // Logo
-      logoDataUrl     : form.logoDataUrl || app0.logoDataUrl || ''
+      logoDataUrl     : form.logoDataUrl || app0.logoDataUrl || '',
+
+      // Numerazioni documenti salvate in appSettings
+      numerazioni     : numerazioni
     });
 
     // Aggiorna progressivi documento (ULTIMO numero usato nell'anno)
