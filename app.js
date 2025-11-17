@@ -1432,14 +1432,25 @@ global.apiLogin = async (username, password) => {
 
 // Redirect post-login: Dashboard di default, ma rispetta la Timbratura da QR
 window.addEventListener('auth-change', () => {
-  const h = (location.hash || '').toLowerCase();
+  const raw    = String(location.hash || '').toLowerCase();
+  const h      = raw.split('?')[0]; // solo la parte prima di eventuali query
   const intent = sessionStorage.getItem('__intent_timbratura') === '1';
-  if (intent || h.startsWith('#/timbratura')) {
-    location.hash = '#/timbratura';
-  } else {
-    location.hash = '#/dashboard';
+
+  // Cambia rotta SOLO se:
+  // - c'è intento timbratura (da QR)
+  // - oppure sei su login/root (nessuna pagina "vera" aperta)
+  const isLoginOrRoot =
+    !h || h === '#' || h === '#/' || h === '#/login';
+
+  if (intent || (isLoginOrRoot && !h.startsWith('#/timbratura'))) {
+    if (intent || h.startsWith('#/timbratura')) {
+      location.hash = '#/timbratura';
+    } else {
+      location.hash = '#/dashboard';
+    }
   }
-  // Consuma l'intento, così i login successivi da PC vanno a dashboard
+
+  // Consuma l'intento, così i login successivi vanno "normali"
   try { sessionStorage.removeItem('__intent_timbratura'); } catch {}
 });
 
@@ -3376,12 +3387,14 @@ window.generateCommessaHTML = function(c, app){
     return toMin(f.oreHHMM);
   };
 
-  // --- dati base ---
+    // --- dati base ---
   const id        = c?.id || '';
   const data      = new Date().toLocaleDateString('it-IT');
   const cliente   = c?.cliente || '';
-  const descr     = c?.descrizione || '';
-  const pezzi     = Math.max(1, Number(c?.qtaPezzi||1));
+  const descrRaw  = c?.descrizione || '';
+  const descr     = s(descrRaw).replace(/\r?\n/g,'<br>');
+  const pezzi     =
+  Math.max(1, Number(c?.qtaPezzi||1));
   const scadenza  = c?.scadenza ? new Date(c.scadenza).toLocaleDateString('it-IT') : '';
   const priorita  = c?.priorita || '';
   const istruz    = (c?.istruzioni||'').replace(/\n/g,'<br>');
@@ -3394,6 +3407,7 @@ window.generateCommessaHTML = function(c, app){
   const qrURL  = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(qrData)}`;
   const fasi = Array.isArray(c?.fasi) ? c.fasi : [];
   const mat  = Array.isArray(c?.materiali) ? c.materiali : [];
+  const righeArt = Array.isArray(c?.righeArticolo) ? c.righeArticolo : [];
 
   // Rif. ordine cliente (accetta stringa o oggetto) — usa la utility globale se presente
   const rifRaw = c?.ordineCliente || c?.nrOrdineCliente || c?.ddtCliente || c?.ordine || c?.ordineId || c?.rifCliente || '';
@@ -3437,6 +3451,16 @@ window.generateCommessaHTML = function(c, app){
       <td>${m?.um||''}</td>
       <td class="right">${m?.qta||0}</td>
       <td>${m?.note||''}</td>
+    </tr>
+  `).join('');
+
+    const righeRows = righeArt.map((r,i)=>`
+    <tr>
+      <td>${s(r?.codice || '')}</td>
+      <td>${s(r?.descrizione || '')}</td>
+      <td>${s(r?.um || '')}</td>
+      <td class="right">${Number(r?.qta || 0) || ''}</td>
+      <td>${s(r?.note || '')}</td>
     </tr>
   `).join('');
 
@@ -3498,6 +3522,22 @@ window.generateCommessaHTML = function(c, app){
     <div class="muted">QR Timbratura</div>
   </div>
 </div>
+
+${righeArt && righeArt.length ? `
+<h3>Articoli commessa</h3>
+<table>
+  <thead>
+    <tr>
+      <th>Codice</th>
+      <th>Descrizione</th>
+      <th>UM</th>
+      <th class="right">Q.tà</th>
+      <th>Note</th>
+    </tr>
+  </thead>
+  <tbody>${righeRows || `<tr><td colspan="5" class="muted">— nessun articolo —</td></tr>`}</tbody>
+</table>
+` : ''}
 
 <h3>Fasi di lavorazione</h3>
 <table>
@@ -4389,13 +4429,16 @@ window.DashboardView = DashboardView;
 function ClientiView(){
   const e = React.createElement;
 
-  const blank = {
+    const blank = {
     id:'', ragione:'', piva:'', email:'',
     sedeLegale:'', sedeOperativa:'',
     codiceUnivoco:'', pec:'',
-    pagamento:'Immediato', iban:'', plafond:false, naturaIva:'N3.5 Plafond',
+    telefono:'', fax:'', cf:'',
+    pagamento:'Immediato', iban:'',
+    plafond:false, naturaIva:'N3.5 Plafond',
     note:''
   };
+
 
   // alias globali
   const lsGet = window.lsGet;
@@ -4517,12 +4560,15 @@ function ClientiView(){
     return out;
   }
 
-  function normKey(k){
+    function normKey(k){
     k = String(k||'').trim().toLowerCase();
     if (k.includes('ragione')) return 'ragione';
     if (k.includes('p.iva') || k.includes('piva') || k.includes('partita')) return 'piva';
     if (k==='email' || k.includes('mail')) return 'email';
     if (k.includes('pec')) return 'pec';
+    if (k.includes('tel')) return 'telefono';
+    if (k.includes('fax')) return 'fax';
+    if (k==='cf' || k.includes('codice fiscale')) return 'cf';
     if (k.includes('codice') && k.includes('univ')) return 'codiceUnivoco';
     if (k.includes('pagamento')) return 'pagamento';
     if (k.includes('iban')) return 'iban';
@@ -4533,6 +4579,7 @@ function ClientiView(){
     if (k.includes('note')) return 'note';
     return k;
   }
+
   function mapCliente(o){
     const out = {};
     Object.keys(o||{}).forEach(k=>{ out[normKey(k)] = o[k]; });
@@ -4585,9 +4632,20 @@ function ClientiView(){
   }
   function onImportCliClick(){ fileCliRef.current && fileCliRef.current.click(); }
 
-  const filtered = (Array.isArray(rows)?rows:[]).filter(r=>{
+    const filtered = (Array.isArray(rows)?rows:[]).filter(r=>{
     const s = q.trim().toLowerCase(); if(!s) return true;
-    return (String(r.ragione||'')+' '+String(r.piva||'')+' '+String(r.email||'')+' '+String(r.note||'')).toLowerCase().includes(s);
+    return (
+      (
+        String(r.ragione||'')+' '+
+        String(r.piva||'')+' '+
+        String(r.cf||'')+' '+
+        String(r.email||'')+' '+
+        String(r.pec||'')+' '+
+        String(r.telefono||'')+' '+
+        String(r.fax||'')+' '+
+        String(r.note||'')
+      ).toLowerCase().includes(s)
+    );
   }).sort((a,b)=> String(a.ragione||'').localeCompare(String(b.ragione||'')));
 
   return e('div', {className:'page'},
@@ -4630,7 +4688,7 @@ function ClientiView(){
             placeholder:'es. 01234567890'
           })
         ),
-        e('div',{className:'form-row'},
+                e('div',{className:'form-row'},
           e('label', null, 'Email'),
           e('input', {
             name:'email',
@@ -4641,6 +4699,46 @@ function ClientiView(){
           })
         ),
 
+        // --- Contatti ---
+        e('div',{className:'form-group-title', style:{gridColumn:'1 / -1', marginTop:4}}, 'Contatti'),
+
+        e('div',{className:'form-row'},
+          e('label', null, 'PEC'),
+          e('input', {
+            name:'pec',
+            value:form.pec||'',
+            onChange:onChange,
+            placeholder:'es. cliente@pec.it'
+          })
+        ),
+        e('div',{className:'form-row'},
+          e('label', null, 'Telefono'),
+          e('input', {
+            name:'telefono',
+            value:form.telefono||'',
+            onChange:onChange,
+            placeholder:'es. +39 049...'
+          })
+        ),
+        e('div',{className:'form-row'},
+          e('label', null, 'Fax'),
+          e('input', {
+            name:'fax',
+            value:form.fax||'',
+            onChange:onChange
+          })
+        ),
+        e('div',{className:'form-row'},
+          e('label', null, 'Codice fiscale'),
+          e('input', {
+            name:'cf',
+            value:form.cf||'',
+            onChange:onChange,
+            placeholder:'se diverso dalla P.IVA'
+          })
+        ),
+
+        // --- Indirizzi ---
         e('div',{className:'form-row form-row-full'},
           e('label', null, 'Sede legale'),
           e('input', {
@@ -4935,39 +5033,39 @@ function FornitoriView(){
       e('button',{className:'btn', onClick:openNew}, '➕ Nuovo fornitore')
     ),
 
-    // TABELLONE: solo i campi che vuoi tu
-    e('div', {className:'card', style:{overflowX:'auto'}},
+        // TABELLONE: elenco fornitori (stile Clienti)
+    e('div', {className:'card', style:{marginTop:8, overflowX:'auto'}},
       e('table', {className:'table'},
-        e('thead', null, e('tr', null,
-          e('th', {style:{width:36, textAlign:'center'}},
-            e('input', {
-              type:'checkbox',
-              ref: el => {
-                if (el) {
-                  el.indeterminate = (filtered.some(r=>sel[String(r.id)]) && !filtered.every(r=>sel[String(r.id)]));
-                }
-              },
-              checked: (filtered.length>0 && filtered.every(r=>sel[String(r.id)])),
-              onChange: () => toggleAll(filtered)
-            })
-          ),
-          e('th', null, 'Ragione sociale'),
-          e('th', null, 'Sede legale'),
-          e('th', null, 'Sede operativa'),
-          e('th', null, 'P.IVA'),
-          e('th', null, 'Telefono'),
-          e('th', null, 'Email'),
-          e('th', {style:{width:220}},
-            e('div', {className:'row', style:{justifyContent:'space-between', gap:8}},
-              e('span', null, 'Azioni'),
-              e('button', {
-                className:'btn btn-outline',
-                disabled: Object.keys(sel).filter(k=>sel[k]).length===0,
-                onClick: delSelected
-              }, '🗑 Elimina selezionati')
+        e('thead', null,
+          e('tr', null,
+            e('th', {style:{width:36, textAlign:'center'}},
+              e('input', {
+                type:'checkbox',
+                ref: el => {
+                  if (el) {
+                    el.indeterminate =
+                      (filtered.some(f=>sel[String(f.id)]) && !filtered.every(f=>sel[String(f.id)]));
+                  }
+                },
+                checked: (filtered.length>0 && filtered.every(f=>sel[String(f.id)])),
+                onChange: () => toggleAll(filtered)
+              })
+            ),
+            e('th', null, 'Ragione sociale'),
+            e('th', null, 'P.IVA'),
+            e('th', null, 'Email'),
+            e('th', {style:{width:220}},
+              e('div', {className:'row', style:{justifyContent:'space-between', gap:8}},
+                e('span', null, 'Azioni'),
+                e('button', {
+                  className:'btn btn-outline',
+                  disabled: Object.keys(sel).filter(k=>sel[k]).length===0,
+                  onClick: delSelected
+                }, '🗑 Elimina selezionati')
+              )
             )
           )
-        )),
+        ),
         e('tbody', null,
           filtered.map(r => e('tr', {key:r.id || r.ragione},
             e('td', {style:{textAlign:'center'}},
@@ -4983,13 +5081,10 @@ function FornitoriView(){
                 ? e('span',{className:'badge badge-warn',style:{marginLeft:6}},'⚠︎ dati fiscali')
                 : null)
             ),
-            e('td', null, r.sedeLegale||''),
-            e('td', null, r.sedeOperativa||''),
             e('td', null, r.piva||''),
-            e('td', null, r.telefono||''),
-            e('td', null, r.email||''),
+            e('td', null, r.email||'-'),
             e('td', null,
-              e('button', {className:'btn btn-outline', onClick:()=>openEdit(r.id)}, '✏️'),
+              e('button', {className:'btn btn-outline', onClick:()=>openEdit(r.id)}, 'Apri'),
               ' ',
               e('button', {className:'btn btn-outline', onClick:()=>del(r.id)}, '🗑')
             )
@@ -12052,7 +12147,8 @@ css += `<style>
         </div>`;
 
       // righe
-      const righeHTML = righe.map((r,i)=>{
+            const righeHTML = righe.map((r,i)=>{
+        const codice = esc(r.codice || r.articoloCodice || '');
         const descr  = esc(r.descr||r.descrizione||'');
         const um     = esc(r.um||r.UM||'PZ');
         const qta    = Number(r.qta||0);
@@ -12070,6 +12166,7 @@ css += `<style>
 
         return `<tr class="no-break">
           <td class="ctr">${i+1}</td>
+          <td>${codice}</td>
           <td>${descr}</td>
           <td class="ctr">${um||'PZ'}</td>
           <td class="ctr">${qta ? fmt2(qta) : ''}</td>
@@ -12079,10 +12176,11 @@ css += `<style>
         </tr>`;
       }).join('');
 
-      const table = `
+            const table = `
         <table>
           <thead><tr>
             <th style="width:26px" class="ctr">#</th>
+            <th style="width:90px">Codice</th>
             <th>Descrizione</th>
             <th style="width:60px" class="ctr">UM</th>
             <th style="width:90px" class="ctr">Q.tà</th>
@@ -12090,7 +12188,7 @@ css += `<style>
             <th style="width:100px" class="num">P. Unitario</th>
             <th style="width:110px" class="num">P. Totale</th>
           </tr></thead>
-          <tbody>${righeHTML || `<tr><td colspan="7" class="muted">— Nessuna riga —</td></tr>`}</tbody>
+          <tbody>${righeHTML || `<tr><td colspan="8" class="muted">— Nessuna riga —</td></tr>`}</tbody>
         </table>`;
 
       const footer = `
