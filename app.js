@@ -13678,9 +13678,17 @@ function MagazzinoView(props){
   const persistArticoli  = (rows)=> (typeof saveKey === 'function') ? saveKey('magArticoli', rows)  : lsSet('magArticoli', rows);
   const persistMovimenti = (rows)=> (typeof saveKey === 'function') ? saveKey('magMovimenti', rows) : lsSet('magMovimenti', rows);
 
+    // Normalizza articoli da LS o da backup (sempre array)
+  const normalizeArticoli = (val) => {
+    if (Array.isArray(val)) return val;
+    if (val && Array.isArray(val.rows)) return val.rows;  // caso {rows:[...]}
+    if (val && typeof val === 'object') return Object.values(val); // caso mappa {id:articolo,...}
+    return [];
+  };
+
   // Stato
   const [tab, setTab]               = React.useState(initialTab); // 'articoli' | 'movimenti'
-  const [articoli, setArticoli]     = React.useState(()=> lsGet('magArticoli', []));
+  const [articoli, setArticoli]     = React.useState(()=> normalizeArticoli(lsGet('magArticoli', [])));
   const [movimenti, setMovimenti]   = React.useState(()=> lsGet('magMovimenti', []));
   const [q, setQ]                   = React.useState('');
   const [editArt, setEditArt]       = React.useState(null); // {codice, descrizione, um, prezzo} | null
@@ -13712,7 +13720,7 @@ function MagazzinoView(props){
   }
 
   React.useEffect(()=>{ /* ricarica all’avvio se cambiato fuori */
-    setArticoli(lsGet('magArticoli', []));
+    setArticoli(normalizeArticoli(lsGet('magArticoli', [])));
     setMovimenti(lsGet('magMovimenti', []));
   },[]);
 
