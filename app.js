@@ -2843,13 +2843,53 @@ function downloadBackup(){
 }
 async function restoreFromFile(file){
   const txt = await file.text();
-  let payload; try { payload = JSON.parse(txt); } catch { alert('Backup non valido'); return; }
-  if(!payload || !payload.data){ alert('Backup non valido'); return; }
-  for(const k of BACKUP_KEYS){
-    const v = (payload.data || {})[k];
-    if(typeof v === 'undefined') continue;
-    try { localStorage.setItem(k, JSON.stringify(v)); } catch {}
+  let payload;
+
+  // 1) Parsing JSON
+  try {
+    payload = JSON.parse(txt);
+  } catch {
+    alert('Backup non valido (JSON illeggibile)');
+    return;
   }
+
+  if (!payload || typeof payload !== 'object') {
+    alert('Backup non valido (formato sconosciuto)');
+    return;
+  }
+
+  // 2) Supporta due formati:
+  //    A) Vecchio: { version, ts, data: { ... } }
+  //    B) Nuovo:  { __meta, appSettings, commesseRows, ... } senza "data"
+  const dataBlock = (payload.data && typeof payload.data === 'object')
+    ? payload.data
+    : payload;
+
+  // 3) Chiavi che ci interessano davvero
+  const KEYS = [
+    'appSettings',
+    'clientiRows','fornitoriRows',
+    'magArticoli','magMovimenti',
+    'commesseRows','oreRows',
+    'ddtRows','fattureRows',
+    'ordiniFornitoriRows',
+    'counters'
+  ];
+
+  let touched = 0;
+  for (const k of KEYS) {
+    if (typeof dataBlock[k] === 'undefined') continue;
+    try {
+      localStorage.setItem(k, JSON.stringify(dataBlock[k]));
+      touched++;
+    } catch {}
+  }
+
+  if (!touched) {
+    alert('Backup non valido (nessuna chiave riconosciuta)');
+    return;
+  }
+
   alert('Ripristino completato ✅\nRicarico la pagina per applicare i dati.');
   location.reload();
 }
@@ -12031,6 +12071,7 @@ css += `<style>
           </div>
           <div class="pagebox">Pag. 1</div>
         </div>`;
+
 
             const html = `<!doctype html><html><head><meta charset="utf-8">${css}</head><body>
         ${header}
