@@ -9604,14 +9604,14 @@ css += `
       text-align:right;
     }
 
-    /* Margine contenuto: lascia spazio al footer più alto */
-    .content{ margin:36mm 0 30mm 0; }
-
+        /* Margine contenuto: spazio per header fisso + footer,
+       ma più compatto per evitare la “seconda pagina vuota”
+       quando il DDT ha poche righe */
+    .content{ margin:28mm 0 24mm 0; }
 
     /* pagebox: lasciamo quello del tema; se vuoi tenerlo qui, ok ma NON toccare ::after */
     /* .footer .pagebox{ min-width:68px; text-align:right; padding-right:2mm; font-weight:700; } */
 
-    .content{ margin:40mm 0 30mm 0; }
 
     .muted{color:#64748b}
     .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
@@ -9710,19 +9710,18 @@ css += `
   </div>
 `;
 
-
-
-  return `<!doctype html><html><head><meta charset="utf-8">${css}</head>
+     return `<!doctype html><html><head><meta charset="utf-8">${css}</head>
   <body>
-    ${header}
-    ${footer}
     <div class="content">
+      ${header}
       ${mittDest}
       ${causale}
       ${tabella}
     </div>
+    ${footer}
   </body></html>`;
 };
+
 
 // ===== Stampa DDT con fallback numerazione pagina =====
 window.printDDT = function(state){
